@@ -2,20 +2,36 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/database/local_database.dart';
+import '../core/providers/local_database_provider.dart';
 import '../core/providers/app_providers.dart';
+import 'app_config.dart';
 import 'app_theme.dart';
+import '../features/auth/application/auth_providers.dart';
 
 class SunShinePosApp extends StatelessWidget {
-  const SunShinePosApp({required this.database, super.key});
+  const SunShinePosApp({
+    required this.database,
+    required this.config,
+    this.supabaseClient,
+    this.supabaseStartupError,
+    super.key,
+  });
 
   final LocalDatabase database;
+  final AppConfig config;
+  final SupabaseClient? supabaseClient;
+  final Object? supabaseStartupError;
 
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
       overrides: [
+        appConfigProvider.overrideWithValue(config),
+        supabaseClientProvider.overrideWithValue(supabaseClient),
+        supabaseStartupErrorProvider.overrideWithValue(supabaseStartupError),
         localDatabaseProvider.overrideWith((ref) {
           ref.onDispose(() => unawaited(database.close()));
           return database;

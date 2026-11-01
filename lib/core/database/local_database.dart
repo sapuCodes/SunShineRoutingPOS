@@ -8,7 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class LocalDatabase {
   LocalDatabase._(this._database);
 
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
   static const String _databaseFileName = 'sunshine_pos.sqlite';
 
   final Database _database;
@@ -62,6 +62,62 @@ class LocalDatabase {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<String?> readSelectedWorkspaceId() =>
+      readMetadata('selected_workspace_id');
+
+  Future<void> writeSelectedWorkspaceId(String? workspaceId) async {
+    if (workspaceId == null) {
+      _ensureOpen();
+      await _database.delete(
+        'app_metadata',
+        where: 'key = ?',
+        whereArgs: ['selected_workspace_id'],
+      );
+      return;
+    }
+    if (workspaceId.trim().isEmpty) {
+      throw ArgumentError.value(
+        workspaceId,
+        'workspaceId',
+        'Must not be empty.',
+      );
+    }
+    await writeMetadata('selected_workspace_id', workspaceId);
+  }
+
+  Future<void> replaceCachedWorkspaces(
+    List<Map<String, Object?>> workspaces,
+  ) async {
+    _ensureOpen();
+    await _database.transaction((transaction) async {
+      await transaction.delete('cached_workspaces');
+      for (final workspace in workspaces) {
+        await transaction.insert('cached_workspaces', workspace);
+      }
+    });
+  }
+
+  Future<List<Map<String, Object?>>> readCachedWorkspaces() async {
+    _ensureOpen();
+    final rows = await _database.query(
+      'cached_workspaces',
+      orderBy: 'name COLLATE NOCASE',
+    );
+    return rows.map(Map<String, Object?>.from).toList(growable: false);
+  }
+
+  Future<void> clearAuthenticationLocalState() async {
+    _ensureOpen();
+    await _database.transaction((transaction) async {
+      await transaction.delete('cached_workspaces');
+      await transaction.delete(
+        'app_metadata',
+        where: 'key = ?',
+        whereArgs: ['selected_workspace_id'],
+      );
+    });
+  }
+
   Future<void> close() => _closeFuture ??= _database.close();
 
   void _ensureOpen() {
@@ -89,6 +145,17 @@ class LocalDatabase {
               key TEXT PRIMARY KEY NOT NULL,
               value TEXT NOT NULL
             ) WITHOUT ROWID
+          ''');
+        case 2:
+          await database.execute('''
+            CREATE TABLE cached_workspaces (
+              workspace_id TEXT PRIMARY KEY NOT NULL,
+              name TEXT NOT NULL,
+              type TEXT NOT NULL,
+              owner_id TEXT NOT NULL,
+              role TEXT NOT NULL,
+              last_verified_at TEXT NOT NULL
+            )
           ''');
         default:
           throw StateError('No local database migration exists for v$version.');

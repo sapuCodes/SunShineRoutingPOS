@@ -39,5 +39,22 @@ class AppConfig {
   final String supabasePublishableKey;
 
   bool get hasSupabaseConfiguration =>
-      supabaseUrl.trim().isNotEmpty && supabasePublishableKey.trim().isNotEmpty;
+      _isLocalSupabaseUrl(supabaseUrl) &&
+      supabasePublishableKey.trim().startsWith('sb_publishable_');
+
+  bool _isLocalSupabaseUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    if (uri == null ||
+        uri.scheme != 'http' ||
+        uri.port != 54321 ||
+        uri.userInfo.isNotEmpty ||
+        uri.query.isNotEmpty ||
+        uri.fragment.isNotEmpty ||
+        (uri.path.isNotEmpty && uri.path != '/')) {
+      return false;
+    }
+
+    return const {'127.0.0.1', 'localhost', '10.0.2.2'}
+        .contains(uri.host.toLowerCase());
+  }
 }

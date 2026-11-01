@@ -26,7 +26,20 @@ void main() {
       expect(await database.getSchemaVersion(), LocalDatabase.currentVersion);
       expect(await database.readMetadata('workspace_context'), isNull);
       await database.writeMetadata('workspace_context', 'unselected');
+      await database.writeSelectedWorkspaceId('workspace-id');
+      await database.replaceCachedWorkspaces([
+        {
+          'workspace_id': 'workspace-id',
+          'name': 'Personal workspace',
+          'type': 'personal',
+          'owner_id': 'user-id',
+          'role': 'Owner',
+          'last_verified_at': '2026-10-31T12:00:00.000Z',
+        },
+      ]);
       expect(await database.readMetadata('workspace_context'), 'unselected');
+      expect(await database.readSelectedWorkspaceId(), 'workspace-id');
+      expect((await database.readCachedWorkspaces()).single['role'], 'Owner');
       await database.close();
 
       database = await LocalDatabase.open(
@@ -34,6 +47,11 @@ void main() {
         databasePath: databasePath,
       );
       expect(await database.readMetadata('workspace_context'), 'unselected');
+      expect(await database.readSelectedWorkspaceId(), 'workspace-id');
+      await database.clearAuthenticationLocalState();
+      expect(await database.readMetadata('workspace_context'), 'unselected');
+      expect(await database.readSelectedWorkspaceId(), isNull);
+      expect(await database.readCachedWorkspaces(), isEmpty);
       await database.close();
     },
   );
