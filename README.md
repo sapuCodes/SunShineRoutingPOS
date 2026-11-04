@@ -130,4 +130,4 @@ identity/hash/single-use behavior, including non-member invitation rejection
 and acceptance rollback. They must not be run against a linked or
 hosted project. The SQL test fixture creates a temporary business workspace
 inside a transaction and rolls it back; it does not leave sample business data
-in the local database.
+in the local database..
